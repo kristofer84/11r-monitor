@@ -136,3 +136,4 @@ dist
 .pnp.*
 
 roaming-history.json
+config.json
