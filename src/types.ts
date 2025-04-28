@@ -16,3 +16,14 @@ export interface RoamingEvent {
   timestamp: Date;
   fastTransition: boolean;
 }
+
+export interface NodeData {
+  mac: string;
+  name: string;
+  ip: string;
+  currentAp: string;
+  fast: boolean;
+  history: string[];
+  graph: string;
+  lastSeen: string;
+}

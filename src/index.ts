@@ -18,7 +18,7 @@ config.accessPoints.forEach(ap => {
 
   // Start DHCP lease fetcher
   const fetcher = new DHCPFetcher(ap);
-  fetcher.on('leases', (leases: { [mac: string]: string }) => {
+  fetcher.on('leases', (leases: { [mac: string]: { hostname: string; ip: string } }) => {
     tracker.updateDHCPLeases(leases);
   });
 

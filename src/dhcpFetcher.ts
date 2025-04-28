@@ -47,16 +47,17 @@ export class DHCPFetcher extends EventEmitter {
     });
   }
 
-  private parseLeases(leaseData: string): { [mac: string]: string } {
+  private parseLeases(leaseData: string): { [mac: string]: { hostname: string; ip: string } } {
     const lines = leaseData.split("\n");
-    const leaseMap: { [mac: string]: string } = {};
+    const leaseMap: { [mac: string]: { hostname: string; ip: string } } = {};
 
     lines.forEach((line) => {
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 3) {
         const mac = parts[1].toLowerCase();
+        const ip = parts[2];
         const hostname = parts[3] || "Unknown";
-        leaseMap[mac] = hostname;
+        leaseMap[mac] = { hostname, ip };
       }
     });
 

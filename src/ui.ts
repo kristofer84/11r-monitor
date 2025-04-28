@@ -1,5 +1,6 @@
 import blessed from "blessed";
 import chalk from "chalk";
+import { NodeData } from "./types";
 
 export class UI {
   private screen: blessed.Widgets.Screen;
@@ -55,12 +56,13 @@ export class UI {
     this.screen.render();
   }
 
-  start(renderFn: () => any[]) {
+  start(renderFn: () => NodeData[]) {
     setInterval(() => {
       const data = renderFn();
 
       const widths = {
         name: 25,
+        ip: 16,
         mac: 20,
         ap: 12,
         fast: 6,
@@ -68,17 +70,17 @@ export class UI {
       };
 
       // Header
-      let content = `{bold}${pad("Client Name", widths.name)} ${pad("MAC Address", widths.mac)} ${pad("Current AP", widths.ap)} ${pad("Fast?", widths.fast)} ${pad(
+      let content = `{bold}${pad("Client Name", widths.name)} ${pad("IP Address", widths.ip)} ${pad("MAC Address", widths.mac)} ${pad("Current AP", widths.ap)} ${pad("Fast?", widths.fast)} ${pad(
         "Last Seen",
         widths.lastSeen
       )} Roaming History{/bold}\n`;
-      content += "".padEnd(widths.name + widths.mac + widths.ap + widths.fast + widths.lastSeen + 30, "-") + "\n";
+      content += "".padEnd(widths.name + widths.ip + widths.mac + widths.ap + widths.fast + widths.lastSeen + 50, "-") + "\n";
 
       // Rows
       data.forEach((row) => {
         const fastStr = row.fast ? chalk.green("Yes") : chalk.red("No");
         const limitedHistory = row.history.slice(0, 5).reverse().join(" -> "); // CAP to 5 entries
-        content += `${pad(row.name, widths.name)} ${pad(row.mac, widths.mac)} ${pad(row.currentAp, widths.ap)} ${pad(fastStr, widths.fast)} ${pad(row.lastSeen, widths.lastSeen)} ${limitedHistory}\n`;
+        content += `${pad(row.name, widths.name)} ${pad(row.ip, widths.ip)} ${pad(row.mac, widths.mac)} ${pad(row.currentAp, widths.ap)} ${pad(fastStr, widths.fast)} ${pad(row.lastSeen, widths.lastSeen)} ${limitedHistory}\n`;
 
       });
 

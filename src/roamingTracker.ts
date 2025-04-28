@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { RoamingEvent } from "./types";
+import { NodeData, RoamingEvent } from "./types";
 
 interface ClientHistory {
   events: RoamingEvent[];
@@ -11,14 +11,14 @@ export class RoamingTracker {
   private clients: Map<string, ClientHistory> = new Map();
   private historyFile = path.resolve("roaming-history.json");
   private macToName: { [mac: string]: string };
-  private dhcpLeases: { [mac: string]: string } = {};
+  private dhcpLeases: { [mac: string]: { hostname: string; ip: string } } = {};
 
   constructor(macToName: { [mac: string]: string }) {
     this.macToName = macToName;
     this.loadHistory();
   }
 
-  updateDHCPLeases(leases: { [mac: string]: string }) {
+  updateDHCPLeases(leases: { [mac: string]: { hostname: string; ip: string } }) {
     this.dhcpLeases = { ...this.dhcpLeases, ...leases };
   }
 
@@ -26,7 +26,7 @@ export class RoamingTracker {
     const now = Date.now();
     const THIRTY_MINUTES = 30 * 60 * 1000;
     const TWO_HOURS = 120 * 50 * 1000;
-    const data: { mac: string; name: string; currentAp: string; fast: boolean; history: string[]; graph: string; lastSeen: string }[] = [];
+    const data: NodeData[] = [];
 
     this.clients.forEach((history, mac) => {
       // Get all events (loaded + live), filter by two hours
@@ -37,14 +37,15 @@ export class RoamingTracker {
         const aps = recentEvents.map((e) => e.apName);
         const graph = aps.reverse().join(" -> ");
 
-        const name = this.macToName[mac] || this.dhcpLeases[mac] || "Unknown";
-
+        const name = this.macToName[mac] || this.dhcpLeases[mac]?.hostname || "Unknown";
+        const ip = this.dhcpLeases[mac]?.ip || "Unknown";
         // Always calculate Last Seen based on the current event timestamp
         const lastSeen = this.formatLastSeen(current.timestamp);
 
         data.push({
           mac,
           name,
+          ip,
           currentAp: current.apName,
           fast: current.fastTransition,
           history: aps.reverse(),
