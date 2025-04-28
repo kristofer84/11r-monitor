@@ -1,0 +1,13 @@
+{
+  "accessPoints": [
+    {
+      "ssh": "user@host",
+      "apName": "AP-name",
+      "password": "password",
+      "dhcpLeasePath": "/tmp/dhcp.leases"
+    }
+  ],
+  "clients": {
+    "ff:ff:ff:ff:ff:ff": "Laptop"
+  }
+}
