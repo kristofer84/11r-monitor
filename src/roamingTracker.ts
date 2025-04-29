@@ -11,15 +11,20 @@ export class RoamingTracker {
   private clients: Map<string, ClientHistory> = new Map();
   private historyFile = path.resolve("roaming-history.json");
   private macToName: { [mac: string]: string };
-  private dhcpLeases: { [mac: string]: { hostname: string; ip: string } } = {};
+  private dhcpLeases: { [apName: string]: { [mac: string]: { hostname: string; ip: string } } } = {};
+  private arpTable: { [apName: string]: { [mac: string]: { hostname: string; ip: string } } } = {};
 
   constructor(macToName: { [mac: string]: string }) {
     this.macToName = macToName;
     this.loadHistory();
   }
 
-  updateDHCPLeases(leases: { [mac: string]: { hostname: string; ip: string } }) {
-    this.dhcpLeases = { ...this.dhcpLeases, ...leases };
+  updateDHCPLeases(apName: string, leases: { [mac: string]: { hostname: string; ip: string } }) {
+    this.dhcpLeases[apName] = leases;
+  }
+
+  updateARPTable(apName: string, arp: { [mac: string]: { hostname: string; ip: string } }) {
+    this.arpTable[apName] = arp;
   }
 
   getClientData() {
@@ -33,13 +38,22 @@ export class RoamingTracker {
       // const recentEvents = history.events.filter((e) => now - new Date(e.timestamp).getTime() <= TWO_HOURS);
       const recentEvents = history.events;
       if (recentEvents.length > 0) {
-        const current = recentEvents[0]; // Most recent event
+        const current = recentEvents[0];
         const aps = recentEvents.map((e) => e.apName);
-        const graph = aps.reverse().join(" -> ");
+        const graph = aps.slice(0, 5).reverse().join(" -> ");
 
-        const name = this.macToName[mac] || this.dhcpLeases[mac]?.hostname || "Unknown";
-        const ip = this.dhcpLeases[mac]?.ip || "Unknown";
-        // Always calculate Last Seen based on the current event timestamp
+        const name =
+          this.macToName[mac] ||
+          this.dhcpLeases[current.apName]?.[mac]?.hostname ||
+          this.arpTable[current.apName]?.[mac]?.hostname ||
+          this.findInAll(this.dhcpLeases, mac, "hostname") ||
+          this.findInAll(this.arpTable, mac, "hostname") ||
+          this.findInAll(this.arpTable, mac, "ip") || // fallback to IP
+          "Unknown";
+
+        const ip =
+          this.dhcpLeases[current.apName]?.[mac]?.ip || this.arpTable[current.apName]?.[mac]?.ip || this.findInAll(this.dhcpLeases, mac, "ip") || this.findInAll(this.arpTable, mac, "ip") || "Unknown";
+
         const lastSeen = this.formatLastSeen(current.timestamp);
 
         data.push({
@@ -48,7 +62,7 @@ export class RoamingTracker {
           ip,
           currentAp: current.apName,
           fast: current.fastTransition,
-          history: aps.reverse(),
+          history: aps.slice(0, 5).reverse(),
           graph,
           lastSeen,
         });
@@ -56,6 +70,15 @@ export class RoamingTracker {
     });
 
     return data;
+  }
+
+  private findInAll(source: { [apName: string]: { [mac: string]: any } }, mac: string, field: string): string | null {
+    for (const apName of Object.keys(source)) {
+      if (source[apName]?.[mac]?.[field]) {
+        return source[apName][mac][field];
+      }
+    }
+    return null;
   }
 
   private formatLastSeen(timestamp: Date): string {
@@ -80,15 +103,13 @@ export class RoamingTracker {
         if (!this.clients.has(mac)) {
           this.clients.set(mac, { events: [], pendingFT: false });
         }
-        const history = this.clients.get(mac)!;
-        history.pendingFT = true;
+        this.clients.get(mac)!.pendingFT = true;
       }
     }
 
     // Association Detection
     const assocRegex = /AP-STA-CONNECTED ([\da-f:]{17})/i;
-    const ieeeAssocRegex = /IEEE 802\.11: associated.*([\da-f:]{17})/i;
-
+    const ieeeAssocRegex = /IEEE 802\\.11: associated.*([\da-f:]{17})/i;
     const assocMatch = logLine.match(assocRegex) || logLine.match(ieeeAssocRegex);
 
     if (assocMatch) {
@@ -99,7 +120,6 @@ export class RoamingTracker {
       }
 
       const history = this.clients.get(mac)!;
-
       const fastTransition = history.pendingFT;
       history.pendingFT = false; // Reset after using
 
@@ -116,10 +136,7 @@ export class RoamingTracker {
 
   private saveEvent(event: RoamingEvent) {
     const history = this.loadHistoryFile();
-    history.push({
-      ...event,
-      timestamp: event.timestamp, // Ensures consistent format
-    });
+    history.push({ ...event, timestamp: event.timestamp });
     fs.writeFileSync(this.historyFile, JSON.stringify(history, null, 2));
   }
 
@@ -131,8 +148,8 @@ export class RoamingTracker {
       if (!this.clients.has(event.mac)) {
         this.clients.set(event.mac, { events: [], pendingFT: false });
       }
-      const clientHistory = this.clients.get(event.mac)!;
-      clientHistory.events.push(event);
+
+      this.clients.get(event.mac)!.events.push(event);
     });
 
     // Ensure ordering
@@ -142,10 +159,7 @@ export class RoamingTracker {
   }
 
   private loadHistoryFile(): RoamingEvent[] {
-    if (!fs.existsSync(this.historyFile)) {
-      return [];
-    }
-    const raw = fs.readFileSync(this.historyFile, "utf-8");
-    return JSON.parse(raw) as RoamingEvent[];
+    if (!fs.existsSync(this.historyFile)) return [];
+    return JSON.parse(fs.readFileSync(this.historyFile, "utf-8")) as RoamingEvent[];
   }
 }
