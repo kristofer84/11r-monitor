@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { NodeData, RoamingEvent } from "./types";
+import { NodeData, RoamingEvent, LeaseInfo } from "./types";
 
 interface ClientHistory {
   events: RoamingEvent[];
@@ -12,20 +12,40 @@ export class RoamingTracker {
   private historyFile = path.resolve("roaming-history.json");
   private history: RoamingEvent[] = [];
   private macToName: { [mac: string]: string };
-  private dhcpLeases: { [apName: string]: { [mac: string]: { hostname: string; ip: string } } } = {};
-  private arpTable: { [apName: string]: { [mac: string]: { hostname: string; ip: string } } } = {};
+  private dhcpLeases: { [apName: string]: { [mac: string]: LeaseInfo } } = {};
+  private arpTable: { [apName: string]: { [mac: string]: LeaseInfo } } = {};
 
   constructor(macToName: { [mac: string]: string }) {
     this.macToName = macToName;
     this.loadHistory();
   }
 
-  updateDHCPLeases(apName: string, leases: { [mac: string]: { hostname: string; ip: string } }) {
-    this.dhcpLeases[apName] = leases;
+  updateDHCPLeases(apName: string, leases: { [mac: string]: LeaseInfo }) {
+    if (!this.dhcpLeases[apName]) {
+      this.dhcpLeases[apName] = {};
+    }
+    Object.keys(leases).forEach((mac) => {
+      const current = this.dhcpLeases[apName][mac];
+      const incoming = leases[mac];
+      this.dhcpLeases[apName][mac] = {
+        ip: incoming.ip,
+        hostname: incoming.hostname || current?.hostname,
+      };
+    });
   }
 
-  updateARPTable(apName: string, arp: { [mac: string]: { hostname: string; ip: string } }) {
-    this.arpTable[apName] = arp;
+  updateARPTable(apName: string, arp: { [mac: string]: LeaseInfo }) {
+    if (!this.arpTable[apName]) {
+      this.arpTable[apName] = {};
+    }
+    Object.keys(arp).forEach((mac) => {
+      const current = this.arpTable[apName][mac];
+      const incoming = arp[mac];
+      this.arpTable[apName][mac] = {
+        ip: incoming.ip,
+        hostname: incoming.hostname || current?.hostname,
+      };
+    });
   }
 
   getClientData() {

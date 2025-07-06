@@ -1,5 +1,5 @@
 import { Client } from 'ssh2';
-import { AccessPointConfig } from './types';
+import { AccessPointConfig, LeaseInfo } from './types';
 import { EventEmitter } from 'events';
 import dns from 'dns';
 
@@ -48,9 +48,9 @@ export class NetworkFetcher extends EventEmitter {
     });
   }
 
-  private async parseARP(arpData: string): Promise<{ [mac: string]: { ip: string, hostname: string } }> {
+  private async parseARP(arpData: string): Promise<{ [mac: string]: LeaseInfo }> {
     const lines = arpData.split('\n').slice(1); // Skip header line
-    const result: { [mac: string]: { ip: string, hostname: string } } = {};
+    const result: { [mac: string]: LeaseInfo } = {};
 
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
@@ -60,10 +60,10 @@ export class NetworkFetcher extends EventEmitter {
 
         if (mac !== '00:00:00:00:00:00') {
           const hostname = await this.reverseLookup(ip);
-          result[mac] = {
-            ip,
-            hostname: hostname || ip // fallback to IP if no hostname
-          };
+          result[mac] = { ip };
+          if (hostname) {
+            result[mac].hostname = hostname;
+          }
         }
       }
     }
