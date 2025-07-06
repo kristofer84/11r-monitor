@@ -10,6 +10,11 @@ export interface Config {
   clients?: { [mac: string]: string }; // Optional map of MAC to names
 }
 
+export interface LeaseInfo {
+  ip: string;
+  hostname?: string;
+}
+
 export interface RoamingEvent {
   mac: string;
   apName: string;

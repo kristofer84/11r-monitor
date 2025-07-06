@@ -1,5 +1,5 @@
 import { Client } from "ssh2";
-import { AccessPointConfig } from "./types";
+import { AccessPointConfig, LeaseInfo } from "./types";
 import { EventEmitter } from "events";
 
 export class DHCPFetcher extends EventEmitter {
@@ -50,17 +50,20 @@ export class DHCPFetcher extends EventEmitter {
     });
   }
 
-  private parseLeases(leaseData: string): { [mac: string]: { hostname: string; ip: string } } {
+  private parseLeases(leaseData: string): { [mac: string]: LeaseInfo } {
     const lines = leaseData.split("\n");
-    const leaseMap: { [mac: string]: { hostname: string; ip: string } } = {};
+    const leaseMap: { [mac: string]: LeaseInfo } = {};
 
     lines.forEach((line) => {
       const parts = line.trim().split(/\s+/);
       if (parts.length >= 3) {
         const mac = parts[1].toLowerCase();
         const ip = parts[2];
-        const hostname = parts[3] || "Unknown";
-        leaseMap[mac] = { hostname, ip };
+        const hostname = parts[3];
+        leaseMap[mac] = { ip };
+        if (hostname) {
+          leaseMap[mac].hostname = hostname;
+        }
       }
     });
 
