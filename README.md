@@ -110,6 +110,7 @@ Phone                    aa:bb:cc:dd:ee:ff   AP2          No     12:25:10   AP1 
   ```
   FT authentication already completed - do not start 4-way handshake
   ```
+- The tracker extracts the client's MAC address from anywhere in the line.
 - If this message appears **before a client reassociation**, it is marked as a **Fast Transition**.
 
 ---

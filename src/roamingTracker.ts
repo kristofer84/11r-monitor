@@ -116,11 +116,12 @@ export class RoamingTracker {
     const now = new Date();
 
     // FT Detection
-    const ftRegex = /FT authentication already completed - do not start 4-way handshake.*([\da-f:]{17})?/i;
-    const ftMatch = logLine.match(ftRegex);
-    if (ftMatch) {
-      const mac = ftMatch[1]?.toLowerCase();
-      if (mac) {
+    const ftMessageRegex = /FT authentication already completed - do not start 4-way handshake/i;
+    const macRegex = /([\da-f]{2}(?::[\da-f]{2}){5})/i;
+    if (ftMessageRegex.test(logLine)) {
+      const macMatch = logLine.match(macRegex);
+      if (macMatch) {
+        const mac = macMatch[1].toLowerCase();
         if (!this.clients.has(mac)) {
           this.clients.set(mac, { events: [], pendingFT: false });
         }
