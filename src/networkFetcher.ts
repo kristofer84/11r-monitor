@@ -32,7 +32,11 @@ export class NetworkFetcher extends EventEmitter {
           console.error(`STDERR: ${data}`);
         });
       });
-    }).connect({
+    })
+    .on('error', (err) => {
+      console.error(`SSH error fetching ARP table: ${err.message}`);
+    })
+    .connect({
       host,
       username: user,
       password,
