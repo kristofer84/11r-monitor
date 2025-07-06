@@ -10,6 +10,7 @@ interface ClientHistory {
 export class RoamingTracker {
   private clients: Map<string, ClientHistory> = new Map();
   private historyFile = path.resolve("roaming-history.json");
+  private history: RoamingEvent[] = [];
   private macToName: { [mac: string]: string };
   private dhcpLeases: { [apName: string]: { [mac: string]: { hostname: string; ip: string } } } = {};
   private arpTable: { [apName: string]: { [mac: string]: { hostname: string; ip: string } } } = {};
@@ -135,14 +136,13 @@ export class RoamingTracker {
   }
 
   private saveEvent(event: RoamingEvent) {
-    const history = this.loadHistoryFile();
-    history.push({ ...event, timestamp: event.timestamp });
-    fs.writeFileSync(this.historyFile, JSON.stringify(history, null, 2));
+    this.history.push({ ...event, timestamp: event.timestamp });
+    fs.writeFileSync(this.historyFile, JSON.stringify(this.history, null, 2));
   }
 
   private loadHistory() {
-    const history = this.loadHistoryFile();
-    history.forEach((event) => {
+    this.history = this.loadHistoryFile();
+    this.history.forEach((event) => {
       event.timestamp = new Date(event.timestamp);
 
       if (!this.clients.has(event.mac)) {

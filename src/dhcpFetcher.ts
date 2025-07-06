@@ -35,6 +35,9 @@ export class DHCPFetcher extends EventEmitter {
           });
         });
       })
+      .on("error", (err) => {
+        console.error(`SSH error fetching DHCP leases: ${err.message}`);
+      })
       .connect({
         host,
         username: user,
