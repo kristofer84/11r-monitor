@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WiFi Roaming Tracker</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 4px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>Roaming Clients</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Client Name</th>
+          <th>IP</th>
+          <th>MAC</th>
+          <th>Current AP</th>
+          <th>Fast</th>
+          <th>Last Seen</th>
+          <th>History</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="client in clients" :key="client.mac">
+          <td>{{ client.name }}</td>
+          <td>{{ client.ip }}</td>
+          <td>{{ client.mac }}</td>
+          <td>{{ client.currentAp }}</td>
+          <td>{{ client.fast ? 'Yes' : 'No' }}</td>
+          <td>{{ client.lastSeen }}</td>
+          <td>{{ client.history.join(' -> ') }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <script>
+  const { createApp } = Vue;
+  createApp({
+    data() {
+      return { clients: [] };
+    },
+    mounted() {
+      this.fetchData();
+      setInterval(this.fetchData, 1000);
+    },
+    methods: {
+      fetchData() {
+        fetch('/api/clients')
+          .then(r => r.json())
+          .then(d => { this.clients = d; })
+          .catch(err => console.error(err));
+      }
+    }
+  }).mount('#app');
+  </script>
+</body>
+</html>
