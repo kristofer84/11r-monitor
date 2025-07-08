@@ -135,5 +135,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-roaming-history.json
-config.json
+**/roaming-history.json
+**/config.json
