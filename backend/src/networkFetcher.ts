@@ -4,18 +4,21 @@ import { EventEmitter } from 'events';
 import dns from 'dns';
 
 export class NetworkFetcher extends EventEmitter {
+  private conn: Client | null = null;
+  private ready = false;
   constructor(private config: AccessPointConfig) {
     super();
   }
 
   fetchARPTable() {
-    const conn = new Client();
-    const [user, host] = this.config.ssh.split('@');
-    const password = this.config.password;
+    this.ensureConnection();
 
-    conn.on('ready', () => {
-      conn.exec('cat /proc/net/arp', (err, stream) => {
-        if (err) throw err;
+    const execute = () => {
+      this.conn!.exec('cat /proc/net/arp', (err, stream) => {
+        if (err) {
+          console.error(`Error executing ARP command: ${err.message}`);
+          return;
+        }
 
         let arpData = '';
         stream.on('data', (data: Buffer) => {
@@ -25,25 +28,42 @@ export class NetworkFetcher extends EventEmitter {
         stream.on('close', async () => {
           const macToInfo = await this.parseARP(arpData);
           this.emit('arpTable', macToInfo);
-          conn.end();
         });
 
-        stream.stderr.on('data', (data: Buffer) => {  
+        stream.stderr.on('data', (data: Buffer) => {
           console.error(`STDERR: ${data}`);
         });
       });
-    })
-    .on('error', (err) => {
-      console.error(`SSH error fetching ARP table: ${err.message}`);
-    })
-    .connect({
-      host,
-      username: user,
-      password,
-      tryKeyboard: true
-    });
+    };
 
-    conn.on('keyboard-interactive', (name, instructions, lang, prompts, finish) => {
+    if (this.ready) {
+      execute();
+    } else {
+      this.conn!.once('ready', execute);
+    }
+  }
+
+  private ensureConnection() {
+    if (this.conn) return;
+    this.conn = new Client();
+    const [user, host] = this.config.ssh.split('@');
+    const password = this.config.password;
+    this.conn
+      .on('ready', () => {
+        this.ready = true;
+      })
+      .on('error', (err) => {
+        console.error(`SSH error fetching ARP table: ${err.message}`);
+        this.conn = null;
+        this.ready = false;
+      })
+      .on('close', () => {
+        this.conn = null;
+        this.ready = false;
+      })
+      .connect({ host, username: user, password, tryKeyboard: true });
+
+    this.conn.on('keyboard-interactive', (name, instructions, lang, prompts, finish) => {
       finish([]);
     });
   }
