@@ -60,7 +60,7 @@ export class RoamingTracker {
       const recentEvents = history.events;
       if (recentEvents.length > 0) {
         const current = recentEvents[0];
-        const aps = recentEvents.map((e) => e.apName);
+        const aps = recentEvents;
         const graph = aps.slice(0, 5).reverse().join(" -> ");
 
         const name =
@@ -75,8 +75,6 @@ export class RoamingTracker {
         const ip =
           this.dhcpLeases[current.apName]?.[mac]?.ip || this.arpTable[current.apName]?.[mac]?.ip || this.findInAll(this.dhcpLeases, mac, "ip") || this.findInAll(this.arpTable, mac, "ip") || "Unknown";
 
-        const lastSeen = this.formatLastSeen(current.timestamp);
-
         data.push({
           mac,
           name,
@@ -85,7 +83,7 @@ export class RoamingTracker {
           fast: current.fastTransition,
           history: aps.slice(0, 5).reverse(),
           graph,
-          lastSeen,
+          lastSeen: current.timestamp.toISOString(),
         });
       }
     });
@@ -100,16 +98,6 @@ export class RoamingTracker {
       }
     }
     return null;
-  }
-
-  private formatLastSeen(timestamp: Date): string {
-    const now = Date.now();
-    const diffMs = now - timestamp.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-
-    if (diffSec < 60) return `${diffSec}s ago`;
-    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
-    return `${Math.floor(diffSec / 3600)}h ago`;
   }
 
   processLog(apName: string, logLine: string) {

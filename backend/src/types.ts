@@ -28,7 +28,7 @@ export interface NodeData {
   ip: string;
   currentAp: string;
   fast: boolean;
-  history: string[];
+  history: RoamingEvent[];
   graph: string;
   lastSeen: string;
 }

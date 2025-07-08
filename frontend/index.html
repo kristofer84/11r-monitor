@@ -1,15 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>WiFi Roaming Tracker</title>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans&family=Work+Sans:wght@400;500&display=swap" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 4px; }
+    body {
+      font-family: 'Work Sans', sans-serif;
+      font-size: 13px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 4px;
+    }
+
+    tr.old {
+      color: gray;
+    }
+
+    .fast {
+      color: rgb(0, 184, 0);
+      font-weight: 500;
+    }
+
+    .normal {
+      color: red;
+    }
+
+    .nested td {
+      border: none;
+    }
+
+    .expandable>div {
+      max-height: 0px;
+      overflow: hidden;
+    }
+
+    .expandable.expanded>div {
+      transition: max-height 1.5s ease;
+      max-height: 480px;
+    }
   </style>
 </head>
+
 <body>
   <div id="app">
     <h1>Roaming Clients</h1>
@@ -26,37 +69,68 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="client in clients" :key="client.mac">
+        <tr v-for="client in clients" :key="client.mac" :class="{old: client.diffSec > 7200}">
           <td>{{ client.name }}</td>
           <td>{{ client.ip }}</td>
           <td>{{ client.mac }}</td>
           <td>{{ client.currentAp }}</td>
-          <td>{{ client.fast ? 'Yes' : 'No' }}</td>
-          <td>{{ client.lastSeen }}</td>
-          <td>{{ client.history.join(' -> ') }}</td>
+          <td :class="client.fast ? 'fast' : 'normal'">{{ client.fast ? 'Yes' : 'No' }}</td>
+          <td>{{ formatLastSeen(client.diffSec) }}</td>
+          <td @mouseenter="details[client.mac] = true" @mouseleave="details[client.mac] = false" class="expandable"
+            :class="{expanded: details[client.mac]}">
+            <div>
+              <table class="nested">
+                <tr v-for="h of client.history">
+                  <td>{{h.apName}}</td>
+                  <td>{{h.timestamp.replace('T', ' ').split('.')[0]}}</td>
+                  <td>{{h.fastTransition}}</td>
+                </tr>
+              </table>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
   </div>
   <script>
-  const { createApp } = Vue;
-  createApp({
-    data() {
-      return { clients: [] };
-    },
-    mounted() {
-      this.fetchData();
-      setInterval(this.fetchData, 1000);
-    },
-    methods: {
-      fetchData() {
-        fetch('/api/clients')
-          .then(r => r.json())
-          .then(d => { this.clients = d; })
-          .catch(err => console.error(err));
+    const { createApp } = Vue;
+    createApp({
+      data() {
+        return {
+          clients: [],
+          details: {}
+        };
+      },
+      mounted() {
+        this.fetchData();
+        setInterval(this.fetchData, 1000);
+      },
+      methods: {
+        fetchData() {
+          fetch('/api/clients')
+            .then(r => r.json())
+            .then(d => {
+              for (const h of d) {
+                h.history.reverse();
+                h.diffSec = this.diffSec(h.lastSeen);
+              }
+              this.clients = d.sort((a, b) => a.name.localeCompare(b.name));
+            })
+            .catch(err => console.error(err));
+        },
+        diffSec(timestamp) {
+          const now = Date.now();
+          const diffMs = now - Date.parse(timestamp);
+          return Math.floor(diffMs / 1000);
+        },
+        formatLastSeen(diffSec) {
+          if (diffSec < 60) return `${diffSec}s ago`;
+          if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+          return `${Math.floor(diffSec / 3600)}h ago`;
+        }
       }
-    }
-  }).mount('#app');
+    }).mount('#app');
   </script>
 </body>
+
 </html>
