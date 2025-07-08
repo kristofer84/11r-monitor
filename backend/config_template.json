@@ -9,5 +9,7 @@
   ],
   "clients": {
     "ff:ff:ff:ff:ff:ff": "Laptop"
+  },
+  "hosts": {
   }
 }

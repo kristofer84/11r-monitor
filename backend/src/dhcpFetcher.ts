@@ -3,49 +3,68 @@ import { AccessPointConfig, LeaseInfo } from "./types";
 import { EventEmitter } from "events";
 
 export class DHCPFetcher extends EventEmitter {
+  private conn: Client | null = null;
+  private ready = false;
+
   constructor(private config: AccessPointConfig) {
     super();
   }
 
   fetchLeases() {
     if (!this.config.dhcpLeasePath) return;
+    this.ensureConnection();
 
-    const conn = new Client();
+    const execute = () => {
+      this.conn!.exec(`cat ${this.config.dhcpLeasePath}`, (err, stream) => {
+        if (err) {
+          console.error(`Error executing DHCP command: ${err.message}`);
+          return;
+        }
+
+        let leaseData = "";
+        stream.on("data", (data: Buffer) => {
+          leaseData += data.toString();
+        });
+
+        stream.on("close", () => {
+          const leases = this.parseLeases(leaseData);
+          this.emit("leases", leases);
+        });
+
+        stream.stderr.on("data", (data: Buffer) => {
+          console.error(`STDERR: ${data}`);
+        });
+      });
+    };
+
+    if (this.ready) {
+      execute();
+    } else {
+      this.conn!.once("ready", execute);
+    }
+  }
+
+  private ensureConnection() {
+    if (this.conn) return;
+    this.conn = new Client();
     const [user, host] = this.config.ssh.split("@");
     const password = this.config.password;
-
-    conn
+    this.conn
       .on("ready", () => {
-        conn.exec(`cat ${this.config.dhcpLeasePath}`, (err, stream) => {
-          if (err) throw err;
-
-          let leaseData = "";
-          stream.on("data", (data: Buffer) => {
-            leaseData += data.toString();
-          });
-
-          stream.on("close", () => {
-            const leases = this.parseLeases(leaseData);
-            this.emit("leases", leases);
-            conn.end();
-          });
-
-          stream.stderr.on("data", (data: Buffer) => {
-            console.error(`STDERR: ${data}`);
-          });
-        });
+        this.ready = true;
       })
       .on("error", (err) => {
         console.error(`SSH error fetching DHCP leases: ${err.message}`);
+        this.conn = null;
+        this.ready = false;
       })
-      .connect({
-        host,
-        username: user,
-        password,
-        tryKeyboard: true,
-      });
+      .on("close", () => {
+        this.conn = null;
+        this.ready = false;
+      })
+      .connect({ host, username: user, password, tryKeyboard: true });
 
-    conn.on("keyboard-interactive", (name, instructions, lang, prompts, finish) => {
+    this.conn.on("keyboard-interactive", (name, instructions, lang, prompts, finish) => {
       finish([]);
     });
   }

@@ -1,4 +1,4 @@
-import { loadConfig } from "./configLoader";
+import { loadConfig, saveConfig } from "./configLoader";
 import { SSHLogWatcher } from "./sshLogWatcher";
 import { RoamingTracker } from "./roamingTracker";
 import { DHCPFetcher } from "./dhcpFetcher";
@@ -10,7 +10,14 @@ import path from "path";
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 const config = loadConfig();
-const tracker = new RoamingTracker(config.clients || {});
+const tracker = new RoamingTracker(
+  config.clients || {},
+  config.hosts || {},
+  (hosts) => {
+    config.hosts = hosts;
+    saveConfig(config);
+  }
+);
 
 // Start log watchers
 config.accessPoints.forEach((ap) => {

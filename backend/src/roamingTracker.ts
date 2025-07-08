@@ -14,9 +14,17 @@ export class RoamingTracker {
   private macToName: { [mac: string]: string };
   private dhcpLeases: { [apName: string]: { [mac: string]: LeaseInfo } } = {};
   private arpTable: { [apName: string]: { [mac: string]: LeaseInfo } } = {};
+  private hostMap: { [ip: string]: string };
+  private saveHosts: (hosts: { [ip: string]: string }) => void;
 
-  constructor(macToName: { [mac: string]: string }) {
+  constructor(
+    macToName: { [mac: string]: string },
+    hosts: { [ip: string]: string },
+    saveHosts: (hosts: { [ip: string]: string }) => void
+  ) {
     this.macToName = macToName;
+    this.hostMap = hosts;
+    this.saveHosts = saveHosts;
     this.loadHistory();
   }
 
@@ -31,6 +39,9 @@ export class RoamingTracker {
         ip: incoming.ip,
         hostname: incoming.hostname || current?.hostname,
       };
+      if (incoming.hostname) {
+        this.updateHostMap(incoming.ip, incoming.hostname);
+      }
     });
   }
 
@@ -45,6 +56,9 @@ export class RoamingTracker {
         ip: incoming.ip,
         hostname: incoming.hostname || current?.hostname,
       };
+      if (incoming.hostname) {
+        this.updateHostMap(incoming.ip, incoming.hostname);
+      }
     });
   }
 
@@ -63,17 +77,22 @@ export class RoamingTracker {
         const aps = recentEvents;
         const graph = aps.slice(0, 5).reverse().join(" -> ");
 
+        const ip =
+          this.dhcpLeases[current.apName]?.[mac]?.ip ||
+          this.arpTable[current.apName]?.[mac]?.ip ||
+          this.findInAll(this.dhcpLeases, mac, "ip") ||
+          this.findInAll(this.arpTable, mac, "ip") ||
+          "Unknown";
+
         const name =
           this.macToName[mac] ||
           this.dhcpLeases[current.apName]?.[mac]?.hostname ||
           this.arpTable[current.apName]?.[mac]?.hostname ||
+          (ip !== "Unknown" ? this.hostMap[ip] : undefined) ||
           this.findInAll(this.dhcpLeases, mac, "hostname") ||
           this.findInAll(this.arpTable, mac, "hostname") ||
           this.findInAll(this.arpTable, mac, "ip") || // fallback to IP
           "Unknown";
-
-        const ip =
-          this.dhcpLeases[current.apName]?.[mac]?.ip || this.arpTable[current.apName]?.[mac]?.ip || this.findInAll(this.dhcpLeases, mac, "ip") || this.findInAll(this.arpTable, mac, "ip") || "Unknown";
 
         data.push({
           mac,
@@ -170,5 +189,13 @@ export class RoamingTracker {
   private loadHistoryFile(): RoamingEvent[] {
     if (!fs.existsSync(this.historyFile)) return [];
     return JSON.parse(fs.readFileSync(this.historyFile, "utf-8")) as RoamingEvent[];
+  }
+
+  private updateHostMap(ip: string, hostname: string) {
+    if (!ip || !hostname) return;
+    if (this.hostMap[ip] !== hostname) {
+      this.hostMap[ip] = hostname;
+      this.saveHosts(this.hostMap);
+    }
   }
 }

@@ -8,6 +8,7 @@ export interface AccessPointConfig {
 export interface Config {
   accessPoints: AccessPointConfig[];
   clients?: { [mac: string]: string }; // Optional map of MAC to names
+  hosts?: { [ip: string]: string }; // Optional map of IP to hostnames
 }
 
 export interface LeaseInfo {
