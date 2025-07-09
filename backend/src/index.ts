@@ -50,10 +50,27 @@ config.accessPoints.forEach((ap) => {
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 app.use(express.static(path.resolve(__dirname, "../../frontend")));
 
 app.get("/api/clients", (_req, res) => {
   res.json(tracker.getClientData());
+});
+
+app.post("/api/clients/:mac/name", (req, res) => {
+  const mac = req.params.mac.toLowerCase();
+  const { name } = req.body as { name?: string };
+  if (!name) {
+    res.status(400).json({ error: "Missing name" });
+    return;
+  }
+  if (!config.clients) {
+    config.clients = {};
+  }
+  config.clients[mac] = name;
+  saveConfig(config);
+  tracker.setClientName(mac, name);
+  res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 3000;

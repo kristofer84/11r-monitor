@@ -198,4 +198,8 @@ export class RoamingTracker {
       this.saveHosts(this.hostMap);
     }
   }
+
+  setClientName(mac: string, name: string) {
+    this.macToName[mac.toLowerCase()] = name;
+  }
 }

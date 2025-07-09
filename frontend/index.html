@@ -70,7 +70,7 @@
       </thead>
       <tbody>
         <tr v-for="client in clients" :key="client.mac" :class="{old: client.diffSec > 7200}">
-          <td>{{ client.name }}</td>
+          <td @click="setName(client)">{{ client.name }}</td>
           <td>{{ client.ip }}</td>
           <td>{{ client.mac }}</td>
           <td>{{ client.currentAp }}</td>
@@ -127,10 +127,23 @@
           if (diffSec < 60) return `${diffSec}s ago`;
           if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
           return `${Math.floor(diffSec / 3600)}h ago`;
+        },
+        setName(client) {
+          const newName = prompt('Enter name', client.name);
+          if (newName && newName !== client.name) {
+            fetch(`/api/clients/${client.mac}/name`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: newName })
+            })
+              .then(() => {
+                client.name = newName;
+              })
+              .catch(err => console.error(err));
+          }
         }
       }
     }).mount('#app');
   </script>
 </body>
-
 </html>
