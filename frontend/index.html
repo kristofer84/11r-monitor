@@ -62,6 +62,7 @@
           <th>Client Name</th>
           <th>IP</th>
           <th>MAC</th>
+          <th>Vendor</th>
           <th>Current AP</th>
           <th>Fast</th>
           <th>Last Seen</th>
@@ -73,6 +74,7 @@
           <td @click="setName(client)">{{ client.name }}</td>
           <td>{{ client.ip }}</td>
           <td>{{ client.mac }}</td>
+          <td>{{ client.vendor }}</td>
           <td>{{ client.currentAp }}</td>
           <td :class="client.fast ? 'fast' : 'normal'">{{ client.fast ? 'Yes' : 'No' }}</td>
           <td>{{ formatLastSeen(client.diffSec) }}</td>

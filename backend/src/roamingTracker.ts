@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { NodeData, RoamingEvent, LeaseInfo } from "./types";
+import { VendorLookup } from "./vendorLookup";
 
 interface ClientHistory {
   events: RoamingEvent[];
@@ -16,6 +17,7 @@ export class RoamingTracker {
   private arpTable: { [apName: string]: { [mac: string]: LeaseInfo } } = {};
   private hostMap: { [ip: string]: string };
   private saveHosts: (hosts: { [ip: string]: string }) => void;
+  private vendorLookup = new VendorLookup();
 
   constructor(
     macToName: { [mac: string]: string },
@@ -94,9 +96,12 @@ export class RoamingTracker {
           this.findInAll(this.arpTable, mac, "ip") || // fallback to IP
           "Unknown";
 
+        const vendor = this.vendorLookup.getVendor(mac);
+
         data.push({
           mac,
           name,
+          vendor,
           ip,
           currentAp: current.apName,
           fast: current.fastTransition,
