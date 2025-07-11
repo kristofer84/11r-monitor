@@ -26,6 +26,7 @@ export interface RoamingEvent {
 export interface NodeData {
   mac: string;
   name: string;
+  vendor: string;
   ip: string;
   currentAp: string;
   fast: boolean;
