@@ -116,7 +116,9 @@
                 h.history.reverse();
                 h.diffSec = this.diffSec(h.lastSeen);
               }
-              this.clients = d.sort((a, b) => a.name.localeCompare(b.name));
+              // this.clients = d.sort((a, b) => a.name.localeCompare(b.name));
+              this.clients = d.sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+
             })
             .catch(err => console.error(err));
         },
